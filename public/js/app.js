@@ -92247,11 +92247,11 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* WEBPACK VAR INJECTION */(function(process) {/* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! axios */ "./node_modules/axios/index.js");
+/* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! axios */ "./node_modules/axios/index.js");
 /* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(axios__WEBPACK_IMPORTED_MODULE_0__);
 // axios
 
-var API_URL = process.env.MIX_DATA_API_URL;
+var API_URL = "api";
 var API = axios__WEBPACK_IMPORTED_MODULE_0___default.a.create({
   baseURL: "".concat(API_URL),
   headers: {
@@ -92270,7 +92270,6 @@ API.interceptors.request.use(function (config) {
   return Promise.reject(err);
 });
 /* harmony default export */ __webpack_exports__["default"] = (API);
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../node_modules/process/browser.js */ "./node_modules/process/browser.js")))
 
 /***/ }),
 

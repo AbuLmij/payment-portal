@@ -32,8 +32,7 @@ class ValidateClient
             ], 400);
         }
         $client = Client::whereHas('key', function (Builder $query) use ($secret) {
-            $query->where('active', 1)
-                ->where(function (Builder $q) use ($secret) {
+            $query->where(function (Builder $q) use ($secret) {
                     $q->where('live_secret_key', $secret)
                         ->orWhere('test_secret_key', $secret);
                 });

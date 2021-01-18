@@ -1,7 +1,7 @@
+const path = require('path');
 const mix = require('laravel-mix');
-let tailwindcss = require('tailwindcss');
+const tailwindcss = require('tailwindcss');
 require('dotenv').config();
-
 
 /*
  |--------------------------------------------------------------------------
@@ -37,7 +37,7 @@ mix.js('resources/js/app.js', 'public/js')
     .copyDirectory('node_modules/material-icons/iconfont/material-icons.css', 'public/css/material-icons/material-icons.css') // Material Icon fonts css
     .copy('node_modules/prismjs/themes/prism-tomorrow.css', 'public/css/prism-tomorrow.css') // Prism Tomorrow theme css
     .copyDirectory('resources/assets/images', 'public/images') // Copy all images from resources to public folder
-    .scripts(['resources/js/payment.js'], 'public/js/payment.js');
+    .scripts(['resources/js/src/payment.js'], 'public/js/payment.js');
 
 // Change below options according to your requirement
 // if (mix.inProduction()) {
