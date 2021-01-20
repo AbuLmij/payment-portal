@@ -30,7 +30,9 @@ function CreationShopPayment(publishableKey) {
                 w: 450,
                 h: 500
             };
-            popup(popupOptions);
+            return new Promise((reslove, reject) => {
+                let window = popup(popupOptions);
+            });
         }
     }
 }
@@ -54,4 +56,5 @@ function popup({url, target, w, h}) {
     );
 
     if (window.focus) newWindow.focus();
+    return newWindow;
 }

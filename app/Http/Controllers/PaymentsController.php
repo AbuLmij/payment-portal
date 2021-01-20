@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmPaymentRequest;
 use App\Http\Requests\PaymentIntentRequest;
 use App\Models\Client;
 use App\Models\Currency;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Omnipay\Omnipay;
 
 class PaymentsController extends Controller
 {
@@ -25,8 +27,10 @@ class PaymentsController extends Controller
         $success = false;
         do {
             try {
+                $mode = str_contains($secret, '_test_') ? 'test' : 'live';
                 $payment = $client->payments()->create([
                     'status' => 'pending',
+                    'mode' => $mode,
                     'payment_secret' => 'ps_' . secureRandomString(252),
                     'payment_data' => json_encode($request->only('currency', 'amount')),
                     'payment_meta_data' => json_encode($request->input('meta_data', []))
@@ -42,7 +46,7 @@ class PaymentsController extends Controller
             ], 500);
         }
         return response()->json([
-            'message' => 'Payment Intent create successfully',
+            'message' => 'Payment Intent created successfully',
             'data' => [
                 'payment_secret' => $payment->payment_secret
             ]
@@ -81,6 +85,62 @@ class PaymentsController extends Controller
         ], 200);
     }
 
+    public function confirmPayment(ConfirmPaymentRequest $request)
+    {
+        $publishableKey = $request->input('publishable_key', '');
+        $paymentSecret = $request->input('payment_secret', '');
+
+        if ($response = $this->validateCredentials($publishableKey, $paymentSecret)) {
+            return $response;
+        }
+        $input = $request->validated();
+
+        $payment = Payment::whereHas('client', function (Builder $query) use ($publishableKey) {
+            $query->whereHas('key', function (Builder $q) use ($publishableKey) {
+                $q->where('live_publishable_key', $publishableKey)
+                    ->orWhere('test_publishable_key', $publishableKey);
+            });
+        })
+            ->where('payment_secret', $paymentSecret)
+            ->first();
+        if (!$payment) {
+            return response()->json([
+                'message' => 'The publishable key or payment secret are invalid',
+            ], 400);
+        }
+        $mode = $payment->mode;
+        $paymentGateway = $input['payment_gateway'];
+        $paymentGatewayClass = config("payment.payment_gateways.$paymentGateway");
+        $gateway = Omnipay::create($paymentGatewayClass);
+        $gateway->setApiKey(config("payment.credentials.$mode.$paymentGateway.secret_key"));
+
+        $paymentData = json_decode($payment->payment_data, true);
+        $formData = $input['card'];
+        $response = $gateway->purchase([
+            'currency' => $paymentData['currency'],
+            'amount' => $paymentData['amount'],
+            'card' => $formData
+        ])->send();
+
+        if ($response->isRedirect()) {
+            // redirect to offsite payment gateway
+            $response->redirect();
+        } elseif ($response->isSuccessful()) {
+            // payment was successful: update database
+            return response()->json([
+                'message' => 'Payment was successful',
+                'res' => $response
+            ], 200);
+        } else {
+            // payment failed: display message to customer
+            return response()->json([
+                'message' => $response->getMessage(),
+                'res' => $response
+            ], 400);
+        }
+
+    }
+
     private function validateCredentials($publishableKey, $paymentSecret)
     {
         if (!is_string($publishableKey)) {
@@ -92,7 +152,7 @@ class PaymentsController extends Controller
         str_contains($publishableKey, '_test_') && $keyLength -= 5;
         if ($keyLength !== 38 || substr($publishableKey, 0, 3) !== 'pk_') {
             return response()->json([
-                'message' => 'Please provide a valid secret key',
+                'message' => 'Please provide a valid publishable key',
             ], 400);
         }
 

@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'payment_gateways' => [
+        'stripe' => 'Stripe\PaymentIntents'
+    ],
     'supported_currencies' => [
         'usd'
     ],

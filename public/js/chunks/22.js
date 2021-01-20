@@ -59,24 +59,46 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   data: function data() {
     return {
       showPaymentForm: false,
-      nameOnCard: "",
-      cardNumber: "",
-      cardExpiry: "",
-      cardCVC: "",
+      paymentCard: {
+        nameOnCard: "",
+        number: "",
+        expiryMonth: "",
+        expiryYear: "",
+        cvv: ""
+      },
+      paymentGateway: "stripe",
       publishableKey: "",
-      paymentSecret: ""
+      paymentSecret: "",
+      paymentCurrency: "",
+      paymentAmount: 0
     };
   },
   methods: {
     validateCredentials: function validateCredentials() {
       var _this = this;
 
-      this.publishableKey = this.$route.query.pk;
-      this.paymentSecret = this.$route.query.ps;
       return new Promise(function (resolve, reject) {
         var message;
 
@@ -144,32 +166,66 @@ __webpack_require__.r(__webpack_exports__);
     getPaymentInfo: function getPaymentInfo() {
       var _this2 = this;
 
+      this.$vs.loading();
       this.$http.get('payment', {
         params: {
           publishable_key: this.publishableKey,
           payment_secret: this.paymentSecret
         }
       }).then(function (response) {
-        console.log(response);
+        this.paymentAmount = response.data.data.amount;
+        this.paymentCurrency = response.data.data.currency;
+        this.showPaymentForm = true;
       }.bind(this))["catch"](function (error) {
         this.$vs.notify({
           color: "danger",
           text: error.message
         });
-      })["finally"](function () {
+      }.bind(this))["finally"](function () {
         _this2.$vs.loading.close();
       });
+    },
+    submitCardForm: function submitCardForm() {
+      // this.$vs.loading();
+      this.$http.post('/confirm_payment', {
+        card: this.paymentCard,
+        publishable_key: this.publishableKey,
+        payment_secret: this.paymentSecret,
+        payment_gateway: this.paymentGateway
+      }).then(function (result) {
+        this.$vs.loading.close();
+
+        if (result.error) {
+          this.$store.commit("MESSAGE_NOTIFICATION", {
+            title: 'Error',
+            description: result.error.message,
+            color: 'danger'
+          });
+        } else {
+          // The payment has been processed!
+          if (result.paymentIntent.status === 'succeeded') {
+            this.initCheckout = false;
+            this.$store.commit("MESSAGE_NOTIFICATION", {
+              title: 'Success',
+              description: 'Payment was successful',
+              color: 'success'
+            });
+            this.$router.push({
+              name: 'My Orders'
+            });
+          }
+        }
+      }.bind(this));
     }
   },
   mounted: function mounted() {
     var _this3 = this;
 
+    this.publishableKey = this.$route.query.pk;
+    this.paymentSecret = this.$route.query.ps;
     this.validateCredentials().then(function () {
-      console.log('then');
-
       _this3.getPaymentInfo();
-    }); // this.$vs.loading();
-    // console.log(this.$route.query.pk, this.$route.query.ps);
+    });
   }
 });
 
@@ -227,66 +283,34 @@ var render = function() {
                 [
                   _c(
                     "vs-row",
-                    { staticClass: "px-6", attrs: { "vs-w": "12" } },
                     [
-                      _c(
-                        "vs-col",
-                        {
-                          attrs: {
-                            "vs-type": "flex-end",
-                            "vs-justify": "flex-end",
-                            "vs-align": "flex-end",
-                            "vs-w": "12"
-                          }
-                        },
-                        [
-                          _c("vs-input", {
-                            directives: [
-                              {
-                                name: "validate",
-                                rawName: "v-validate",
-                                value: "required|alpha_spaces|max:255",
-                                expression: "'required|alpha_spaces|max:255'"
-                              }
-                            ],
-                            staticClass: "w-full mt-5",
-                            attrs: {
-                              label: "Name on Card",
-                              name: "nameOnCard"
-                            },
-                            on: {
-                              click: function($event) {
-                                $event.stopPropagation()
-                              }
-                            },
-                            model: {
-                              value: _vm.nameOnCard,
-                              callback: function($$v) {
-                                _vm.nameOnCard = $$v
-                              },
-                              expression: "nameOnCard"
-                            }
-                          }),
-                          _vm._v(" "),
-                          _c(
-                            "span",
-                            {
-                              directives: [
-                                {
-                                  name: "show",
-                                  rawName: "v-show",
-                                  value: _vm.errors.has("nameOnCard"),
-                                  expression: "errors.has('nameOnCard')"
-                                }
-                              ],
-                              staticClass: "text-danger w-full text-sm"
-                            },
-                            [_vm._v(_vm._s(_vm.errors.first("nameOnCard")))]
+                      _c("vs-col", { staticClass: "text-center my-8" }, [
+                        _c("h2", { staticClass: "font-bold text-primary" }, [
+                          _vm._v(
+                            "\n                            " +
+                              _vm._s(_vm.paymentCurrency) +
+                              " " +
+                              _vm._s(
+                                _vm._f("numeralFormat")(
+                                  _vm.paymentAmount,
+                                  "0,0.00"
+                                )
+                              ) +
+                              "\n                        "
                           )
-                        ],
-                        1
-                      ),
-                      _vm._v(" "),
+                        ])
+                      ])
+                    ],
+                    1
+                  ),
+                  _vm._v(" "),
+                  _c(
+                    "vs-row",
+                    {
+                      staticClass: "px-6 justify-between",
+                      attrs: { "vs-w": "12" }
+                    },
+                    [
                       _c(
                         "vs-col",
                         {
@@ -319,11 +343,11 @@ var render = function() {
                               }
                             },
                             model: {
-                              value: _vm.cardNumber,
+                              value: _vm.paymentCard.number,
                               callback: function($$v) {
-                                _vm.cardNumber = $$v
+                                _vm.$set(_vm.paymentCard, "number", $$v)
                               },
-                              expression: "cardNumber"
+                              expression: "paymentCard.number"
                             }
                           }),
                           _vm._v(" "),
@@ -353,7 +377,7 @@ var render = function() {
                             "vs-type": "flex-end",
                             "vs-justify": "centern",
                             "vs-align": "center",
-                            "vs-w": "6"
+                            "vs-w": "2"
                           }
                         },
                         [
@@ -362,23 +386,18 @@ var render = function() {
                               {
                                 name: "validate",
                                 rawName: "v-validate",
-                                value: "required|digits:6",
-                                expression: "'required|digits:6'"
+                                value: "required|digits:2",
+                                expression: "'required|digits:2'"
                               }
                             ],
                             staticClass: "w-full mt-5",
-                            attrs: { label: "MMYYYY", name: "cardExpiry" },
-                            on: {
-                              click: function($event) {
-                                $event.stopPropagation()
-                              }
-                            },
+                            attrs: { label: "MM", name: "cardExpiryMonth" },
                             model: {
-                              value: _vm.cardExpiry,
+                              value: _vm.paymentCard.expiryMonth,
                               callback: function($$v) {
-                                _vm.cardExpiry = $$v
+                                _vm.$set(_vm.paymentCard, "expiryMonth", $$v)
                               },
-                              expression: "cardExpiry"
+                              expression: "paymentCard.expiryMonth"
                             }
                           }),
                           _vm._v(" "),
@@ -389,13 +408,67 @@ var render = function() {
                                 {
                                   name: "show",
                                   rawName: "v-show",
-                                  value: _vm.errors.has("cardExpiry"),
-                                  expression: "errors.has('cardExpiry')"
+                                  value: _vm.errors.has("cardExpiryMonth"),
+                                  expression: "errors.has('cardExpiryMonth')"
                                 }
                               ],
                               staticClass: "text-danger w-full text-sm"
                             },
-                            [_vm._v(_vm._s(_vm.errors.first("cardExpiry")))]
+                            [
+                              _vm._v(
+                                _vm._s(_vm.errors.first("cardExpiryMonth"))
+                              )
+                            ]
+                          )
+                        ],
+                        1
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "vs-col",
+                        {
+                          attrs: {
+                            "vs-type": "flex-end",
+                            "vs-justify": "centern",
+                            "vs-align": "center",
+                            "vs-w": "2"
+                          }
+                        },
+                        [
+                          _c("vs-input", {
+                            directives: [
+                              {
+                                name: "validate",
+                                rawName: "v-validate",
+                                value: "required|digits:2",
+                                expression: "'required|digits:2'"
+                              }
+                            ],
+                            staticClass: "w-full mt-5",
+                            attrs: { label: "YY", name: "cardExpiryYear" },
+                            model: {
+                              value: _vm.paymentCard.expiryYear,
+                              callback: function($$v) {
+                                _vm.$set(_vm.paymentCard, "expiryYear", $$v)
+                              },
+                              expression: "paymentCard.expiryYear"
+                            }
+                          }),
+                          _vm._v(" "),
+                          _c(
+                            "span",
+                            {
+                              directives: [
+                                {
+                                  name: "show",
+                                  rawName: "v-show",
+                                  value: _vm.errors.has("cardExpiryYear"),
+                                  expression: "errors.has('cardExpiryYear')"
+                                }
+                              ],
+                              staticClass: "text-danger w-full text-sm"
+                            },
+                            [_vm._v(_vm._s(_vm.errors.first("cardExpiryYear")))]
                           )
                         ],
                         1
@@ -406,7 +479,7 @@ var render = function() {
                           "vs-type": "flex-end",
                           "vs-justify": "center",
                           "vs-align": "center",
-                          "vs-w": "1"
+                          "vs-w": "2"
                         }
                       }),
                       _vm._v(" "),
@@ -417,7 +490,7 @@ var render = function() {
                             "vs-type": "flex-end",
                             "vs-justify": "center",
                             "vs-align": "center",
-                            "vs-w": "5"
+                            "vs-w": "4"
                           }
                         },
                         [
@@ -436,17 +509,12 @@ var render = function() {
                               name: "cardCVC",
                               icon: "credit_card"
                             },
-                            on: {
-                              click: function($event) {
-                                $event.stopPropagation()
-                              }
-                            },
                             model: {
-                              value: _vm.cardCVC,
+                              value: _vm.paymentCard.cvv,
                               callback: function($$v) {
-                                _vm.cardCVC = $$v
+                                _vm.$set(_vm.paymentCard, "cvv", $$v)
                               },
-                              expression: "cardCVC"
+                              expression: "paymentCard.cvv"
                             }
                           }),
                           _vm._v(" "),
@@ -491,7 +559,20 @@ var render = function() {
                                 }
                               }
                             },
-                            [_vm._v("Pay\n                            ")]
+                            [
+                              _vm._v(
+                                "Pay\n                            " +
+                                  _vm._s(_vm.paymentCurrency) +
+                                  " " +
+                                  _vm._s(
+                                    _vm._f("numeralFormat")(
+                                      _vm.paymentAmount,
+                                      "0,0.00"
+                                    )
+                                  ) +
+                                  "\n                        "
+                              )
+                            ]
                           )
                         ],
                         1
