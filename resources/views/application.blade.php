@@ -26,7 +26,7 @@
     </div>
 
     <!-- <script src="js/app.js"></script> -->
-    {{--<script src="https://js.stripe.com/v3/"></script>--}}
+    <script src="https://js.stripe.com/v3/"></script>
     <script src="{{ asset(mix('js/app.js')) }}"></script>
   </body>
 </html>

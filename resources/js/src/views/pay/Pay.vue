@@ -1,7 +1,7 @@
 <template>
     <div class="h-screen flex w-full bg-img vx-row no-gutter items-center justify-center">
-        <div class="vx-col sm:w-2/3 md:w-1/2 lg:w-1/3 xl:w-1/4 sm:m-0 m-4">
-            <vx-card v-show="showPaymentForm" fixedHeight>
+        <div class="vx-col w-full sm:w-2/3 md:w-1/2 lg:w-1/3 xl:w-1/4 sm:m-0 m-4">
+            <vx-card v-show="showForm" fixedHeight>
                 <div slot="no-body" class="full-page-bg-color">
                     <vs-row>
                         <vs-col class="text-center my-8">
@@ -10,56 +10,77 @@
                             </h2>
                         </vs-col>
                     </vs-row>
-                    <vs-row class="px-6 justify-between" vs-w="12">
-                        <!--<vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">-->
-                            <!--<vs-input label="Name on Card" name="nameOnCard" v-model="paymentCard.nameOnCard"-->
-                                      <!--class="w-full mt-5"-->
-                                      <!--v-validate="'required|alpha_spaces|max:255'" @click.stop=""/>-->
-                            <!--<span class="text-danger w-full text-sm" v-show="errors.has('nameOnCard')">{{ errors.first("nameOnCard") }}</span>-->
-                        <!--</vs-col>-->
 
+                    <vs-row class="mt-4 justify-center" vs-w="12">
+                        <vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="6">
+                            <vs-button color="primary" type="border" class="font-bold">
+                                Stripe
+                            </vs-button>
+                        </vs-col>
+                    </vs-row>
+                    <vs-row class="my-6 px-6 justify-between" vs-w="12">
                         <vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">
-                            <vs-input
-                                    label="Card Number"
-                                    name="cardNumber"
-                                    v-model="paymentCard.number"
-                                    class="w-full mt-5"
-                                    icon="credit_card"
-                                    v-validate="'required|digits:16'"
-                                    @click.stop=""
-                            />
-                            <span class="text-danger w-full text-sm" v-show="errors.has('cardNumber')">{{ errors.first("cardNumber") }}</span>
-                        </vs-col>
+                            <div id="card-element"></div>
 
-                        <vs-col vs-type="flex-end" vs-justify="centern" vs-align="center" vs-w="2">
-                            <vs-input label="MM" name="cardExpiryMonth" v-model="paymentCard.expiryMonth"
-                                      class="w-full mt-5"
-                                      v-validate="'required|digits:2'"/>
-                            <span class="text-danger w-full text-sm"
-                                  v-show="errors.has('cardExpiryMonth')">{{ errors.first("cardExpiryMonth") }}</span>
+                            <div id="card-errors" role="alert"></div>
                         </vs-col>
-
-                        <vs-col vs-type="flex-end" vs-justify="centern" vs-align="center" vs-w="2">
-                            <vs-input label="YY" name="cardExpiryYear" v-model="paymentCard.expiryYear"
-                                      class="w-full mt-5"
-                                      v-validate="'required|digits:2'"/>
-                            <span class="text-danger w-full text-sm"
-                                  v-show="errors.has('cardExpiryYear')">{{ errors.first("cardExpiryYear") }}</span>
-                        </vs-col>
-
-                        <vs-col vs-type="flex-end" vs-justify="center" vs-align="center" vs-w="2"></vs-col>
-                        <vs-col vs-type="flex-end" vs-justify="center" vs-align="center" vs-w="4">
-                            <vs-input label="CVC" name="cardCVC" v-model="paymentCard.cvv" class="w-full mt-5"
-                                      icon="credit_card" v-validate="'required|digits:3'"/>
-                            <span class="text-danger w-full text-sm" v-show="errors.has('cardCVC')">{{ errors.first("cardCVC") }}</span>
-                        </vs-col>
-
                         <vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="12">
-                            <vs-button class="w-full my-5" @click.stop="submitCardForm">Pay
+                            <vs-button class="w-full my-5" @click.stop="submitStripeForm">Pay
                                 {{paymentCurrency}} {{paymentAmount | numeralFormat("0,0.00")}}
                             </vs-button>
                         </vs-col>
                     </vs-row>
+
+                    <!--<vs-row class="px-6 justify-between" vs-w="12">-->
+                    <!--<vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">-->
+                    <!--<vs-input label="Name on Card" name="nameOnCard" v-model="paymentCard.nameOnCard"-->
+                    <!--class="w-full mt-5"-->
+                    <!--v-validate="'required|alpha_spaces|max:255'" @click.stop=""/>-->
+                    <!--<span class="text-danger w-full text-sm" v-show="errors.has('nameOnCard')">{{ errors.first("nameOnCard") }}</span>-->
+                    <!--</vs-col>-->
+
+                    <!--<vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">-->
+                    <!--<vs-input-->
+                    <!--label="Card Number"-->
+                    <!--name="cardNumber"-->
+                    <!--v-model="paymentCard.number"-->
+                    <!--class="w-full mt-5"-->
+                    <!--icon="credit_card"-->
+                    <!--v-validate="'required|digits:16'"-->
+                    <!--@click.stop=""-->
+                    <!--/>-->
+                    <!--<span class="text-danger w-full text-sm" v-show="errors.has('cardNumber')">{{ errors.first("cardNumber") }}</span>-->
+                    <!--</vs-col>-->
+
+                    <!--<vs-col vs-type="flex-end" vs-justify="centern" vs-align="center" vs-w="2">-->
+                    <!--<vs-input label="MM" name="cardExpiryMonth" v-model="paymentCard.expiryMonth"-->
+                    <!--class="w-full mt-5"-->
+                    <!--v-validate="'required|digits:2'"/>-->
+                    <!--<span class="text-danger w-full text-sm"-->
+                    <!--v-show="errors.has('cardExpiryMonth')">{{ errors.first("cardExpiryMonth") }}</span>-->
+                    <!--</vs-col>-->
+
+                    <!--<vs-col vs-type="flex-end" vs-justify="centern" vs-align="center" vs-w="2">-->
+                    <!--<vs-input label="YY" name="cardExpiryYear" v-model="paymentCard.expiryYear"-->
+                    <!--class="w-full mt-5"-->
+                    <!--v-validate="'required|digits:2'"/>-->
+                    <!--<span class="text-danger w-full text-sm"-->
+                    <!--v-show="errors.has('cardExpiryYear')">{{ errors.first("cardExpiryYear") }}</span>-->
+                    <!--</vs-col>-->
+
+                    <!--<vs-col vs-type="flex-end" vs-justify="center" vs-align="center" vs-w="2"></vs-col>-->
+                    <!--<vs-col vs-type="flex-end" vs-justify="center" vs-align="center" vs-w="4">-->
+                    <!--<vs-input label="CVC" name="cardCVC" v-model="paymentCard.cvv" class="w-full mt-5"-->
+                    <!--icon="credit_card" v-validate="'required|digits:3'"/>-->
+                    <!--<span class="text-danger w-full text-sm" v-show="errors.has('cardCVC')">{{ errors.first("cardCVC") }}</span>-->
+                    <!--</vs-col>-->
+
+                    <!--<vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="12">-->
+                    <!--<vs-button class="w-full my-5" @click.stop="submitCardForm">Pay-->
+                    <!--{{paymentCurrency}} {{paymentAmount | numeralFormat("0,0.00")}}-->
+                    <!--</vs-button>-->
+                    <!--</vs-col>-->
+                    <!--</vs-row>-->
                 </div>
             </vx-card>
         </div>
@@ -71,7 +92,7 @@
     export default {
         data() {
             return {
-                showPaymentForm: false,
+                showForm: false,
                 paymentCard: {
                     nameOnCard: "",
                     number: "",
@@ -84,6 +105,10 @@
                 paymentSecret: "",
                 paymentCurrency: "",
                 paymentAmount: 0,
+                stripe: {
+                    obj: null,
+                    card: null
+                }
             };
         },
         methods: {
@@ -141,7 +166,7 @@
                     .then(function (response) {
                         this.paymentAmount = response.data.data.amount;
                         this.paymentCurrency = response.data.data.currency;
-                        this.showPaymentForm = true;
+                        this.showPaymentForm();
                     }.bind(this))
                     .catch(function (error) {
                         this.$vs.notify({
@@ -153,34 +178,72 @@
                         this.$vs.loading.close();
                     });
             },
-            submitCardForm() {
-                // this.$vs.loading();
-                this.$http.post('/confirm_payment', {
-                    card: this.paymentCard,
+            showPaymentForm() {
+                this.configureStripeForm();
+
+                this.showForm = true;
+            },
+            configureStripeForm() {
+                this.stripe.obj = Stripe('pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF');
+                let elements = this.stripe.obj.elements();
+                let style = {
+                    base: {
+                        color: "#32325d",
+                    }
+                };
+
+                this.stripe.card = elements.create("card", style);
+                this.stripe.card.mount("#card-element");
+                this.stripe.card.on('change', function (event) {
+                    let displayError = document.getElementById('card-errors');
+                    if (event.error) {
+                        displayError.textContent = event.error.message;
+                    } else {
+                        displayError.textContent = '';
+                    }
+                });
+            },
+            submitStripeForm() {
+                this.$vs.loading();
+                this.stripe.obj.createToken(this.stripe.card).then(function (result) {
+                    if (result.error) {
+                        // Inform the customer that there was an error.
+                        let errorElement = document.getElementById('card-errors');
+                        errorElement.textContent = result.error.message;
+                    } else {
+                        // Send the token to your server.
+                        this.confirmPayment({
+                            token: result.token.id
+                        });
+                    }
+                }.bind(this));
+            },
+            confirmPayment(params) {
+                Object.assign(params, {
                     publishable_key: this.publishableKey,
                     payment_secret: this.paymentSecret,
                     payment_gateway: this.paymentGateway
-                }).then(function (result) {
-                    this.$vs.loading.close();
-                    if (result.error) {
+                });
+                this.$http.post('/confirm_payment', params).then(function (result) {
+                    try {
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.postMessage(result.data, '*');
+                        }
+                    } catch (err) {
+                    }
+                    window.close();
+                    return false;
+                }.bind(this))
+                    .catch(function (error) {
                         this.$store.commit("MESSAGE_NOTIFICATION", {
                             title: 'Error',
-                            description: result.error.message,
+                            description: error.message,
                             color: 'danger'
                         });
-                    } else {
-                        // The payment has been processed!
-                        if (result.paymentIntent.status === 'succeeded') {
-                            this.initCheckout = false;
-                            this.$store.commit("MESSAGE_NOTIFICATION", {
-                                title: 'Success',
-                                description: 'Payment was successful',
-                                color: 'success'
-                            });
-                            this.$router.push({name: 'My Orders'});
-                        }
-                    }
-                }.bind(this));
+                    }.bind(this))
+                    .finally(() => {
+                        this.$vs.loading.close();
+                    });
             }
         },
         mounted() {

@@ -23,14 +23,12 @@ class ConfirmPaymentRequest extends FormRequest
      */
     public function rules()
     {
-        return [
-            'payment_gateway' => 'required|string|in:' .
+//        dd($this->all());
+        return array_merge([
+            'payment_gateway' => 'bail|required|string|in:' .
                 implode(',', array_keys(config('payment.payment_gateways', []))),
-//            'card.nameOnCard' => 'required|string|max:255',
-            'card.number' => 'required|digits:16',
-            'card.expiryMonth' => 'required|digits:2',
-            'card.expiryYear' => 'required|digits:2',
-            'card.cvv' => 'required|digits:3',
-        ];
+
+        ],
+            config('payment.params.' . $this->input('payment_gateway', ''), []));
     }
 }

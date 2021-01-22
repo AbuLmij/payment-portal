@@ -1,3 +1,5 @@
+let paymentWindow = null, messageEventAdded = false;
+
 function CreationShopPayment(publishableKey) {
     if (typeof publishableKey !== 'string') {
         console.error('Please provide a publishable key');
@@ -30,31 +32,49 @@ function CreationShopPayment(publishableKey) {
                 w: 450,
                 h: 500
             };
-            return new Promise((reslove, reject) => {
-                let window = popup(popupOptions);
+            return new Promise((resolve, reject) => {
+                popup(popupOptions);
+                if (!messageEventAdded) {
+                    window.addEventListener("message", (event) => {
+                        try {
+                            if (event.origin !== "http://payment-portal.net:88") {
+                                return;
+                            }
+                            resolve({
+                                message: event.data.message,
+                            });
+                        } catch (e) {
+                            reject({
+                                message: e.getMessage()
+                            });
+                        }
+                    }, false);
+                    messageEventAdded = true;
+                }
             });
         }
     }
 }
 
 function popup({url, target, w, h}) {
-    // Fixes dual-screen position                             Most browsers      Firefox
-    const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
-    const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+    if (paymentWindow == null || paymentWindow.closed) {
+        // Fixes dual-screen position                             Most browsers      Firefox
+        const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+        const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
 
-    const width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
-    const height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
+        const width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
+        const height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
 
-    const systemZoom = width / window.screen.availWidth;
-    const left = (width - w) / 2 / systemZoom + dualScreenLeft;
-    const top = (height - h) / 2 / systemZoom + dualScreenTop;
+        const systemZoom = width / window.screen.availWidth;
+        const left = (width - w) / 2 / systemZoom + dualScreenLeft;
+        const top = (height - h) / 2 / systemZoom + dualScreenTop;
 
-    const newWindow = window.open(
-        url,
-        target,
-        `scrollbars=1,width=${w / systemZoom},height=${h / systemZoom},top=${top},left=${left}`
-    );
-
-    if (window.focus) newWindow.focus();
-    return newWindow;
+        paymentWindow = window.open(
+            url,
+            target,
+            `scrollbars=1,width=${w / systemZoom},height=${h / systemZoom},top=${top},left=${left}`
+        );
+    } else {
+        paymentWindow.focus();
+    }
 }

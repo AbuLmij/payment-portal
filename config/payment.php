@@ -2,7 +2,12 @@
 
 return [
     'payment_gateways' => [
-        'stripe' => 'Stripe\PaymentIntents'
+        'stripe' => 'Stripe'
+    ],
+    'params' => [
+        'stripe' => [
+            'token' => 'required|string'
+        ]
     ],
     'supported_currencies' => [
         'usd'

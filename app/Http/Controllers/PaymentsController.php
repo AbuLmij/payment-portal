@@ -115,13 +115,11 @@ class PaymentsController extends Controller
         $gateway->setApiKey(config("payment.credentials.$mode.$paymentGateway.secret_key"));
 
         $paymentData = json_decode($payment->payment_data, true);
-        $formData = $input['card'];
-        $response = $gateway->purchase([
+        $params = array_merge($request->only(array_keys(config('payment.params.' . $paymentGateway, []))), [
             'currency' => $paymentData['currency'],
             'amount' => $paymentData['amount'],
-            'card' => $formData
-        ])->send();
-
+        ]);
+        $response = $gateway->purchase($params)->send();
         if ($response->isRedirect()) {
             // redirect to offsite payment gateway
             $response->redirect();
@@ -129,16 +127,13 @@ class PaymentsController extends Controller
             // payment was successful: update database
             return response()->json([
                 'message' => 'Payment was successful',
-                'res' => $response
             ], 200);
         } else {
             // payment failed: display message to customer
             return response()->json([
                 'message' => $response->getMessage(),
-                'res' => $response
             ], 400);
         }
-
     }
 
     private function validateCredentials($publishableKey, $paymentSecret)
