@@ -2,11 +2,21 @@
 
 return [
     'payment_gateways' => [
-        'stripe' => 'Stripe'
+        'stripe' => 'Stripe\PaymentIntents'
+    ],
+    'params_mapping' => [
+        'stripe' => [
+            'payment_intent' => 'paymentIntentReference'
+        ]
     ],
     'params' => [
         'stripe' => [
             'token' => 'required|string'
+        ]
+    ],
+    'complete_payment_params' => [
+        'stripe' => [
+            'payment_intent' => 'required|string'
         ]
     ],
     'supported_currencies' => [
@@ -16,15 +26,15 @@ return [
     'credentials' => [
         'test' => [
             'stripe' => [
-                'publishable_key' => env('STRIPE_PUBLISHABLE_KEY'),
-                'secret_key' => env('STRIPE_SECRET_KEY'),
+                'publishable_key' => env('STRIPE_TEST_PUBLISHABLE_KEY'),
+                'secret_key' => env('STRIPE_TEST_SECRET_KEY'),
             ]
         ],
 
         'live' => [
             'stripe' => [
-                'publishable_key' => env('STRIPE_PUBLISHABLE_KEY'),
-                'secret_key' => env('STRIPE_SECRET_KEY'),
+                'publishable_key' => env('STRIPE_LIVE_PUBLISHABLE_KEY'),
+                'secret_key' => env('STRIPE_LIVE_SECRET_KEY'),
             ]
         ]
     ]

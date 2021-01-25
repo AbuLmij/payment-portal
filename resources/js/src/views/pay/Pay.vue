@@ -12,23 +12,29 @@
                     </vs-row>
 
                     <vs-row class="mt-4 justify-center" vs-w="12">
-                        <vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="6">
-                            <vs-button color="primary" type="border" class="font-bold">
-                                Stripe
-                            </vs-button>
-                        </vs-col>
-                    </vs-row>
-                    <vs-row class="my-6 px-6 justify-between" vs-w="12">
-                        <vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">
-                            <div id="card-element"></div>
+                        <vs-tabs alignment="center">
+                            <vs-tab label="Stripe" @click="configureStripeForm">
+                                <div>
+                                    <vs-row class="my-6 px-6 justify-between" vs-w="12">
+                                        <vs-col vs-type="flex-end" vs-justify="flex-end" vs-align="flex-end" vs-w="12">
+                                            <div id="stripe-card-element"></div>
 
-                            <div id="card-errors" role="alert"></div>
-                        </vs-col>
-                        <vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="12">
-                            <vs-button class="w-full my-5" @click.stop="submitStripeForm">Pay
-                                {{paymentCurrency}} {{paymentAmount | numeralFormat("0,0.00")}}
-                            </vs-button>
-                        </vs-col>
+                                            <div id="stripe-card-errors" role="alert"></div>
+                                        </vs-col>
+                                        <vs-col vs-type="flex" vs-justify="center" vs-align="center" vs-w="12">
+                                            <vs-button class="w-full my-5" @click.stop="submitStripeForm">Pay
+                                                {{paymentCurrency}} {{paymentAmount | numeralFormat("0,0.00")}}
+                                            </vs-button>
+                                        </vs-col>
+                                    </vs-row>
+                                </div>
+                            </vs-tab>
+                            <vs-tab label="MerchantE">
+                                <div>
+
+                                </div>
+                            </vs-tab>
+                        </vs-tabs>
                     </vs-row>
 
                     <!--<vs-row class="px-6 justify-between" vs-w="12">-->
@@ -105,6 +111,7 @@
                 paymentSecret: "",
                 paymentCurrency: "",
                 paymentAmount: 0,
+                mode: '',
                 stripe: {
                     obj: null,
                     card: null
@@ -184,7 +191,6 @@
                 this.showForm = true;
             },
             configureStripeForm() {
-                this.stripe.obj = Stripe('pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF');
                 let elements = this.stripe.obj.elements();
                 let style = {
                     base: {
@@ -193,22 +199,25 @@
                 };
 
                 this.stripe.card = elements.create("card", style);
-                this.stripe.card.mount("#card-element");
-                this.stripe.card.on('change', function (event) {
-                    let displayError = document.getElementById('card-errors');
-                    if (event.error) {
-                        displayError.textContent = event.error.message;
-                    } else {
-                        displayError.textContent = '';
-                    }
-                });
+                setTimeout(function () {
+                    document.getElementById('stripe-card-element').innerHTML = '';
+                    this.stripe.card.mount("#stripe-card-element");
+                    this.stripe.card.on('change', function (event) {
+                        let displayError = document.getElementById('stripe-card-errors');
+                        if (event.error) {
+                            displayError.textContent = event.error.message;
+                        } else {
+                            displayError.textContent = '';
+                        }
+                    });
+                }.bind(this), 300);
             },
             submitStripeForm() {
                 this.$vs.loading();
                 this.stripe.obj.createToken(this.stripe.card).then(function (result) {
                     if (result.error) {
                         // Inform the customer that there was an error.
-                        let errorElement = document.getElementById('card-errors');
+                        let errorElement = document.getElementById('stripe-card-errors');
                         errorElement.textContent = result.error.message;
                     } else {
                         // Send the token to your server.
@@ -225,13 +234,14 @@
                     payment_gateway: this.paymentGateway
                 });
                 this.$http.post('/confirm_payment', params).then(function (result) {
+                    window.location.href = result.data.url;
                     try {
                         if (window.opener && !window.opener.closed) {
                             window.opener.postMessage(result.data, '*');
                         }
                     } catch (err) {
                     }
-                    window.close();
+                    // window.close();
                     return false;
                 }.bind(this))
                     .catch(function (error) {
@@ -249,6 +259,15 @@
         mounted() {
             this.publishableKey = this.$route.query.pk;
             this.paymentSecret = this.$route.query.ps;
+            this.mode = this.publishableKey.includes('_test_') ? 'test' : 'live';
+            let stripeKey;
+            // todo should fix the dotenv library issue to load keys using dotenv.
+            if (this.mode === 'live') {
+                stripeKey = 'pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF'; // should load the live key
+            } else {
+                stripeKey = 'pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF';
+            }
+            this.stripe.obj = Stripe(stripeKey);
             this.validateCredentials().then(() => {
                 this.getPaymentInfo();
             });

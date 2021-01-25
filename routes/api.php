@@ -20,3 +20,4 @@ Route::group(['middleware' => 'validate_client'], function () {
 
 Route::get('payment', 'PaymentsController@getPaymentInfo');
 Route::post('confirm_payment', 'PaymentsController@confirmPayment');
+Route::post('complete_payment', 'PaymentsController@completePayment');

@@ -98,6 +98,12 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
+//
+//
+//
+//
 /* harmony default export */ __webpack_exports__["default"] = ({
   data: function data() {
     return {
@@ -114,6 +120,7 @@ __webpack_require__.r(__webpack_exports__);
       paymentSecret: "",
       paymentCurrency: "",
       paymentAmount: 0,
+      mode: '',
       stripe: {
         obj: null,
         card: null
@@ -215,7 +222,6 @@ __webpack_require__.r(__webpack_exports__);
       this.showForm = true;
     },
     configureStripeForm: function configureStripeForm() {
-      this.stripe.obj = Stripe('pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF');
       var elements = this.stripe.obj.elements();
       var style = {
         base: {
@@ -223,23 +229,26 @@ __webpack_require__.r(__webpack_exports__);
         }
       };
       this.stripe.card = elements.create("card", style);
-      this.stripe.card.mount("#card-element");
-      this.stripe.card.on('change', function (event) {
-        var displayError = document.getElementById('card-errors');
+      setTimeout(function () {
+        document.getElementById('stripe-card-element').innerHTML = '';
+        this.stripe.card.mount("#stripe-card-element");
+        this.stripe.card.on('change', function (event) {
+          var displayError = document.getElementById('stripe-card-errors');
 
-        if (event.error) {
-          displayError.textContent = event.error.message;
-        } else {
-          displayError.textContent = '';
-        }
-      });
+          if (event.error) {
+            displayError.textContent = event.error.message;
+          } else {
+            displayError.textContent = '';
+          }
+        });
+      }.bind(this), 300);
     },
     submitStripeForm: function submitStripeForm() {
       this.$vs.loading();
       this.stripe.obj.createToken(this.stripe.card).then(function (result) {
         if (result.error) {
           // Inform the customer that there was an error.
-          var errorElement = document.getElementById('card-errors');
+          var errorElement = document.getElementById('stripe-card-errors');
           errorElement.textContent = result.error.message;
         } else {
           // Send the token to your server.
@@ -258,13 +267,15 @@ __webpack_require__.r(__webpack_exports__);
         payment_gateway: this.paymentGateway
       });
       this.$http.post('/confirm_payment', params).then(function (result) {
+        window.location.href = result.data.url;
+
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage(result.data, '*');
           }
-        } catch (err) {}
+        } catch (err) {} // window.close();
 
-        window.close();
+
         return false;
       }.bind(this))["catch"](function (error) {
         this.$store.commit("MESSAGE_NOTIFICATION", {
@@ -282,6 +293,16 @@ __webpack_require__.r(__webpack_exports__);
 
     this.publishableKey = this.$route.query.pk;
     this.paymentSecret = this.$route.query.ps;
+    this.mode = this.publishableKey.includes('_test_') ? 'test' : 'live';
+    var stripeKey; // todo should fix the dotenv library issue to load keys using dotenv.
+
+    if (this.mode === 'live') {
+      stripeKey = 'pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF'; // should load the live key
+    } else {
+      stripeKey = 'pk_test_ZGlwYNawjOpsQxLbkgKqmWwu00Evfb4UmF';
+    }
+
+    this.stripe.obj = Stripe(stripeKey);
     this.validateCredentials().then(function () {
       _this4.getPaymentInfo();
     });
@@ -372,98 +393,104 @@ var render = function() {
                     },
                     [
                       _c(
-                        "vs-col",
-                        {
-                          attrs: {
-                            "vs-type": "flex",
-                            "vs-justify": "center",
-                            "vs-align": "center",
-                            "vs-w": "6"
-                          }
-                        },
+                        "vs-tabs",
+                        { attrs: { alignment: "center" } },
                         [
                           _c(
-                            "vs-button",
+                            "vs-tab",
                             {
-                              staticClass: "font-bold",
-                              attrs: { color: "primary", type: "border" }
+                              attrs: { label: "Stripe" },
+                              on: { click: _vm.configureStripeForm }
                             },
                             [
-                              _vm._v(
-                                "\n                            Stripe\n                        "
+                              _c(
+                                "div",
+                                [
+                                  _c(
+                                    "vs-row",
+                                    {
+                                      staticClass: "my-6 px-6 justify-between",
+                                      attrs: { "vs-w": "12" }
+                                    },
+                                    [
+                                      _c(
+                                        "vs-col",
+                                        {
+                                          attrs: {
+                                            "vs-type": "flex-end",
+                                            "vs-justify": "flex-end",
+                                            "vs-align": "flex-end",
+                                            "vs-w": "12"
+                                          }
+                                        },
+                                        [
+                                          _c("div", {
+                                            attrs: { id: "stripe-card-element" }
+                                          }),
+                                          _vm._v(" "),
+                                          _c("div", {
+                                            attrs: {
+                                              id: "stripe-card-errors",
+                                              role: "alert"
+                                            }
+                                          })
+                                        ]
+                                      ),
+                                      _vm._v(" "),
+                                      _c(
+                                        "vs-col",
+                                        {
+                                          attrs: {
+                                            "vs-type": "flex",
+                                            "vs-justify": "center",
+                                            "vs-align": "center",
+                                            "vs-w": "12"
+                                          }
+                                        },
+                                        [
+                                          _c(
+                                            "vs-button",
+                                            {
+                                              staticClass: "w-full my-5",
+                                              on: {
+                                                click: function($event) {
+                                                  $event.stopPropagation()
+                                                  return _vm.submitStripeForm(
+                                                    $event
+                                                  )
+                                                }
+                                              }
+                                            },
+                                            [
+                                              _vm._v(
+                                                "Pay\n                                            " +
+                                                  _vm._s(_vm.paymentCurrency) +
+                                                  " " +
+                                                  _vm._s(
+                                                    _vm._f("numeralFormat")(
+                                                      _vm.paymentAmount,
+                                                      "0,0.00"
+                                                    )
+                                                  ) +
+                                                  "\n                                        "
+                                              )
+                                            ]
+                                          )
+                                        ],
+                                        1
+                                      )
+                                    ],
+                                    1
+                                  )
+                                ],
+                                1
                               )
                             ]
-                          )
-                        ],
-                        1
-                      )
-                    ],
-                    1
-                  ),
-                  _vm._v(" "),
-                  _c(
-                    "vs-row",
-                    {
-                      staticClass: "my-6 px-6 justify-between",
-                      attrs: { "vs-w": "12" }
-                    },
-                    [
-                      _c(
-                        "vs-col",
-                        {
-                          attrs: {
-                            "vs-type": "flex-end",
-                            "vs-justify": "flex-end",
-                            "vs-align": "flex-end",
-                            "vs-w": "12"
-                          }
-                        },
-                        [
-                          _c("div", { attrs: { id: "card-element" } }),
+                          ),
                           _vm._v(" "),
-                          _c("div", {
-                            attrs: { id: "card-errors", role: "alert" }
-                          })
-                        ]
-                      ),
-                      _vm._v(" "),
-                      _c(
-                        "vs-col",
-                        {
-                          attrs: {
-                            "vs-type": "flex",
-                            "vs-justify": "center",
-                            "vs-align": "center",
-                            "vs-w": "12"
-                          }
-                        },
-                        [
-                          _c(
-                            "vs-button",
-                            {
-                              staticClass: "w-full my-5",
-                              on: {
-                                click: function($event) {
-                                  $event.stopPropagation()
-                                  return _vm.submitStripeForm($event)
-                                }
-                              }
-                            },
-                            [
-                              _vm._v(
-                                "Pay\n                            " +
-                                  _vm._s(_vm.paymentCurrency) +
-                                  " " +
-                                  _vm._s(
-                                    _vm._f("numeralFormat")(
-                                      _vm.paymentAmount,
-                                      "0,0.00"
-                                    )
-                                  ) +
-                                  "\n                        "
-                              )
-                            ]
-                          )
+                          _c("vs-tab", { attrs: { label: "MerchantE" } }, [
+                            _c("div")
+                          ])
                         ],
                         1
                       )

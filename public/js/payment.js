@@ -28,7 +28,7 @@ function CreationShopPayment(publishableKey) {
             }
             let popupOptions = {
                 url: `http://payment-portal.net:88/pay?pk=${this.publishableKey}&ps=${paymentSecret}`,
-                target: 'payment',
+                target: '_blank',
                 w: 450,
                 h: 500
             };

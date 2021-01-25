@@ -93494,6 +93494,12 @@ var router = new vue_router__WEBPACK_IMPORTED_MODULE_1__["default"]({
         return __webpack_require__.e(/*! import() */ 22).then(__webpack_require__.bind(null, /*! @/views/pay/Pay.vue */ "./resources/js/src/views/pay/Pay.vue"));
       }
     }, {
+      path: '/complete_payment',
+      name: 'Authentication Succeeded',
+      component: function component() {
+        return __webpack_require__.e(/*! import() */ 29).then(__webpack_require__.bind(null, /*! @/views/pay/CompletePayment.vue */ "./resources/js/src/views/pay/CompletePayment.vue"));
+      }
+    }, {
       path: '/login',
       name: 'Login',
       component: function component() {

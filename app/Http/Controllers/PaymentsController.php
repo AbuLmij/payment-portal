@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CompletePaymentRequest;
 use App\Http\Requests\ConfirmPaymentRequest;
 use App\Http\Requests\PaymentIntentRequest;
 use App\Models\Client;
@@ -118,11 +119,17 @@ class PaymentsController extends Controller
         $params = array_merge($request->only(array_keys(config('payment.params.' . $paymentGateway, []))), [
             'currency' => $paymentData['currency'],
             'amount' => $paymentData['amount'],
+            'confirm' => true,
+            'returnUrl' => 'http://payment-portal.net:88/complete_payment?payment_gateway=' . $paymentGateway
+                . '&mode=' . $mode
         ]);
         $response = $gateway->purchase($params)->send();
         if ($response->isRedirect()) {
             // redirect to offsite payment gateway
-            $response->redirect();
+//            $response->redirect();
+            return response()->json([
+                'url' => $response->getData()['next_action']['redirect_to_url']['url']
+            ], 202);
         } elseif ($response->isSuccessful()) {
             // payment was successful: update database
             return response()->json([
@@ -134,6 +141,23 @@ class PaymentsController extends Controller
                 'message' => $response->getMessage(),
             ], 400);
         }
+    }
+
+    public function completePayment(CompletePaymentRequest $request)
+    {
+        $mode = $request->input('mode');
+        $paymentGateway = $request->input('payment_gateway');
+        $paymentGatewayClass = config("payment.payment_gateways.$paymentGateway");
+        $gateway = Omnipay::create($paymentGatewayClass);
+        $gateway->setApiKey(config("payment.credentials.$mode.$paymentGateway.secret_key"));
+
+        $params = $this->mapParams(
+            $paymentGateway,
+            $request->only(array_keys(config('payment.complete_payment_params.' . $paymentGateway, []))));
+
+        $response = $gateway->completePurchase($params)->send();
+
+        dd($response->isSuccessful(), $response->getData());
     }
 
     private function validateCredentials($publishableKey, $paymentSecret)
@@ -157,5 +181,18 @@ class PaymentsController extends Controller
             ], 400);
         }
         return 0;
+    }
+
+    private function mapParams($gateway, $params)
+    {
+        $paramsMapping = config("payment.params_mapping.$gateway");
+        foreach ($params as $key => $value) {
+            if (isset($paramsMapping[$key])) {
+                $params[$paramsMapping[$key]] = $value;
+                unset($params[$key]);
+            }
+        }
+        return $params;
+
     }
 }
