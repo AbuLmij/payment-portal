@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PaymentSucceeded;
 use App\Http\Requests\CompletePaymentRequest;
 use App\Http\Requests\ConfirmPaymentRequest;
 use App\Http\Requests\PaymentIntentRequest;
@@ -124,23 +125,29 @@ class PaymentsController extends Controller
                 . '&mode=' . $mode
         ]);
         $response = $gateway->purchase($params)->send();
+
+        // redirect to offsite payment gateway
         if ($response->isRedirect()) {
-            // redirect to offsite payment gateway
-//            $response->redirect();
             return response()->json([
                 'url' => $response->getData()['next_action']['redirect_to_url']['url']
             ], 202);
-        } elseif ($response->isSuccessful()) {
-            // payment was successful: update database
+        }
+        // payment was successful: update database
+        if ($response->isSuccessful()) {
+            dd($response->getData(), $response->getTransactionReference(), $response->getRequest());
+            PaymentSucceeded::dispatch([
+                'payment' => $payment,
+                'gateway' => $paymentGateway,
+            ]);
             return response()->json([
                 'message' => 'Payment was successful',
             ], 200);
-        } else {
-            // payment failed: display message to customer
-            return response()->json([
-                'message' => $response->getMessage(),
-            ], 400);
         }
+        // payment failed: display message to customer
+        return response()->json([
+            'message' => $response->getMessage(),
+        ], 400);
+
     }
 
     public function completePayment(CompletePaymentRequest $request)
@@ -157,7 +164,14 @@ class PaymentsController extends Controller
 
         $response = $gateway->completePurchase($params)->send();
 
-        dd($response->isSuccessful(), $response->getData());
+        if ($response->isSuccessful()) {
+            return response()->json([
+                'message' => 'Payment was successful',
+            ], 200);
+        }
+        return response()->json([
+            'message' => $response->getMessage(),
+        ], 400);
     }
 
     private function validateCredentials($publishableKey, $paymentSecret)

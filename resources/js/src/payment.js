@@ -1,4 +1,28 @@
-let paymentWindow = null, messageEventAdded = false;
+let paymentWindow = null, successCallback, errorCallback;
+
+    window.addEventListener("message", (event) => {
+        try {
+            if (event.origin !== "http://payment-portal.net:88") {
+                return;
+            }
+            if (event.data.code === 200 && successCallback) {
+                successCallback({
+                    message: event.data.message,
+                });
+            }
+            if (event.data.code === 400 && errorCallback) {
+                errorCallback({
+                    message: event.data.message,
+                });
+            }
+        } catch (e) {
+            if (errorCallback) {
+                errorCallback({
+                    message: e.getMessage()
+                });
+            }
+        }
+    }, false);
 
 function CreationShopPayment(publishableKey) {
     if (typeof publishableKey !== 'string') {
@@ -33,24 +57,9 @@ function CreationShopPayment(publishableKey) {
                 h: 500
             };
             return new Promise((resolve, reject) => {
+                successCallback = resolve;
+                errorCallback = reject;
                 popup(popupOptions);
-                if (!messageEventAdded) {
-                    window.addEventListener("message", (event) => {
-                        try {
-                            if (event.origin !== "http://payment-portal.net:88") {
-                                return;
-                            }
-                            resolve({
-                                message: event.data.message,
-                            });
-                        } catch (e) {
-                            reject({
-                                message: e.getMessage()
-                            });
-                        }
-                    }, false);
-                    messageEventAdded = true;
-                }
             });
         }
     }

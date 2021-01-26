@@ -216,6 +216,7 @@
                 this.$vs.loading();
                 this.stripe.obj.createToken(this.stripe.card).then(function (result) {
                     if (result.error) {
+                        this.$vs.loading.close();
                         // Inform the customer that there was an error.
                         let errorElement = document.getElementById('stripe-card-errors');
                         errorElement.textContent = result.error.message;
@@ -234,25 +235,33 @@
                     payment_gateway: this.paymentGateway
                 });
                 this.$http.post('/confirm_payment', params).then(function (result) {
-                    window.location.href = result.data.url;
+                    if (result.status === 202) {
+                        window.location.href = result.data.url;
+                        return false;
+                    }
                     try {
                         if (window.opener && !window.opener.closed) {
+                            result.data.code = 200;
                             window.opener.postMessage(result.data, '*');
                         }
                     } catch (err) {
                     }
-                    // window.close();
                     return false;
                 }.bind(this))
                     .catch(function (error) {
-                        this.$store.commit("MESSAGE_NOTIFICATION", {
-                            title: 'Error',
-                            description: error.message,
-                            color: 'danger'
-                        });
+                        try {
+                            if (window.opener && !window.opener.closed) {
+                                window.opener.postMessage({
+                                    message: error.message,
+                                    code: 400
+                                }, '*');
+                            }
+                        } catch (err) {
+                        }
+                        return false;
                     }.bind(this))
                     .finally(() => {
-                        this.$vs.loading.close();
+                        // window.close();
                     });
             }
         },
