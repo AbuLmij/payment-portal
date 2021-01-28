@@ -290,7 +290,8 @@ __webpack_require__.r(__webpack_exports__);
         } catch (err) {}
 
         return false;
-      }.bind(this))["finally"](function () {// window.close();
+      }.bind(this))["finally"](function () {
+        window.close();
       });
     }
   },

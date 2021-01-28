@@ -20,6 +20,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         \App\Events\PaymentSucceeded::class => [
             \App\Listeners\HandlePaymentSucceededEvent::class
+        ],
+        \App\Events\PaymentFailed::class => [
+            \App\Listeners\HandlePaymentFailedEvent::class
         ]
     ];
 

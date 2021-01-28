@@ -32,7 +32,7 @@
                     return false;
                 })
                 .finally(() => {
-                    // window.close();
+                    window.close();
                 });
         }
     };

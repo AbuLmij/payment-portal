@@ -38,7 +38,8 @@ __webpack_require__.r(__webpack_exports__);
       } catch (err) {}
 
       return false;
-    })["finally"](function () {// window.close();
+    })["finally"](function () {
+      window.close();
     });
   }
 });

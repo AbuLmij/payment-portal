@@ -9,6 +9,9 @@ return [
             'payment_intent' => 'paymentIntentReference'
         ]
     ],
+    'payment_reference_key' => [
+        'stripe' => 'id'
+    ],
     'params' => [
         'stripe' => [
             'token' => 'required|string'

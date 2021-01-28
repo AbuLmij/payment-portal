@@ -261,7 +261,7 @@
                         return false;
                     }.bind(this))
                     .finally(() => {
-                        // window.close();
+                        window.close();
                     });
             }
         },

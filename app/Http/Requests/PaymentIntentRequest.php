@@ -26,7 +26,8 @@ class PaymentIntentRequest extends FormRequest
         return [
             'currency' => 'required|string|in:' . implode(',', config('payment.supported_currencies')),
             'amount' => 'required|numeric|min:0.01|regex:/^\d+(\.\d{1,2})?$/',
-            'meta_data' => 'nullable|array'
+            'metadata' => 'nullable|array',
+            'return_url' => 'required|url'
         ];
     }
 }

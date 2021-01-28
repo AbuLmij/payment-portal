@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PaymentFailed;
 use App\Events\PaymentSucceeded;
 use App\Http\Requests\CompletePaymentRequest;
 use App\Http\Requests\ConfirmPaymentRequest;
@@ -11,6 +12,7 @@ use App\Models\Currency;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Omnipay\Omnipay;
 
 class PaymentsController extends Controller
@@ -31,11 +33,11 @@ class PaymentsController extends Controller
             try {
                 $mode = str_contains($secret, '_test_') ? 'test' : 'live';
                 $payment = $client->payments()->create([
-                    'status' => 'pending',
+                    'status' => 'Pending',
                     'mode' => $mode,
                     'payment_secret' => 'ps_' . secureRandomString(252),
-                    'payment_data' => json_encode($request->only('currency', 'amount')),
-                    'payment_meta_data' => json_encode($request->input('meta_data', []))
+                    'payment_data' => json_encode($request->only('currency', 'amount', 'return_url')),
+                    'payment_meta_data' => json_encode($request->input('metadata', []))
                 ]);
                 $success = true;
             } catch (\Exception $exception) {
@@ -64,18 +66,12 @@ class PaymentsController extends Controller
             return $response;
         }
 
-        $payment = Payment::whereHas('client', function (Builder $query) use ($publishableKey) {
-            $query->whereHas('key', function (Builder $q) use ($publishableKey) {
-                $q->where('live_publishable_key', $publishableKey)
-                    ->orWhere('test_publishable_key', $publishableKey);
-            });
-        })
-            ->where('payment_secret', $paymentSecret)
-            ->first();
+        $payment = Payment::getPayment($publishableKey, $paymentSecret);
+
         if (!$payment) {
             return response()->json([
                 'message' => 'The publishable key or payment secret are invalid',
-            ], 400);
+            ], 404);
         }
         $paymentData = json_decode($payment->payment_data, true);
         $data = [
@@ -97,18 +93,11 @@ class PaymentsController extends Controller
         }
         $input = $request->validated();
 
-        $payment = Payment::whereHas('client', function (Builder $query) use ($publishableKey) {
-            $query->whereHas('key', function (Builder $q) use ($publishableKey) {
-                $q->where('live_publishable_key', $publishableKey)
-                    ->orWhere('test_publishable_key', $publishableKey);
-            });
-        })
-            ->where('payment_secret', $paymentSecret)
-            ->first();
+        $payment = Payment::getPayment($publishableKey, $paymentSecret);
         if (!$payment) {
             return response()->json([
                 'message' => 'The publishable key or payment secret are invalid',
-            ], 400);
+            ], 404);
         }
         $mode = $payment->mode;
         $paymentGateway = $input['payment_gateway'];
@@ -121,32 +110,43 @@ class PaymentsController extends Controller
             'currency' => $paymentData['currency'],
             'amount' => $paymentData['amount'],
             'confirm' => true,
-            'returnUrl' => 'http://payment-portal.net:88/complete_payment?payment_gateway=' . $paymentGateway
-                . '&mode=' . $mode
+            'returnUrl' => url('complete_payment', [
+                'payment_gateway' => $paymentGateway,
+                'mode' => $mode,
+            ])
         ]);
-        $response = $gateway->purchase($params)->send();
+        try {
+            $response = $gateway->purchase($params)->send();
+            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
 
-        // redirect to offsite payment gateway
-        if ($response->isRedirect()) {
+            // redirect to offsite payment gateway
+            if ($response->isRedirect()) {
+                if ($res = $this->updatePaymentReference($payment, $paymentReference)) {
+                    return $res;
+                }
+                return response()->json([
+                    'url' => $response->getData()['next_action']['redirect_to_url']['url']
+                ], 202);
+            }
+            // payment was successful: update database
+            if ($response->isSuccessful()) {
+                PaymentSucceeded::dispatch($payment, $paymentGateway, $paymentReference);
+                return response()->json([
+                    'message' => 'Payment was successful',
+                ], 200);
+            }
+            // payment failed: display message to customer
+            PaymentFailed::dispatch($payment, $paymentGateway, $paymentReference);
             return response()->json([
-                'url' => $response->getData()['next_action']['redirect_to_url']['url']
-            ], 202);
-        }
-        // payment was successful: update database
-        if ($response->isSuccessful()) {
-            dd($response->getData(), $response->getTransactionReference(), $response->getRequest());
-            PaymentSucceeded::dispatch([
-                'payment' => $payment,
-                'gateway' => $paymentGateway,
-            ]);
+                'message' => $response->getMessage(),
+            ], 400);
+        } catch (\Exception $exception) {
+            Log::error('Confirm Payment Error: ' . $exception->getMessage());
+            PaymentFailed::dispatch($payment, $paymentGateway, null);
             return response()->json([
-                'message' => 'Payment was successful',
-            ], 200);
+                'message' => 'An error occurred',
+            ], 500);
         }
-        // payment failed: display message to customer
-        return response()->json([
-            'message' => $response->getMessage(),
-        ], 400);
 
     }
 
@@ -162,16 +162,32 @@ class PaymentsController extends Controller
             $paymentGateway,
             $request->only(array_keys(config('payment.complete_payment_params.' . $paymentGateway, []))));
 
-        $response = $gateway->completePurchase($params)->send();
-
-        if ($response->isSuccessful()) {
+        try {
+            $response = $gateway->completePurchase($params)->send();
+            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
+            $payment = Payment::where('status', 'Pending Confirmation')
+                ->where('transaction_reference', $paymentReference)
+                ->first();
+            if (!$payment) {
+                return response()->json([
+                    'message' => 'We couldn\'t find the payment you are trying to complete',
+                ], 400);
+            }
+            if ($response->isSuccessful()) {
+                PaymentSucceeded::dispatch($payment, $paymentGateway, $paymentReference);
+                return response()->json([
+                    'message' => 'Payment was successful',
+                ], 200);
+            }
             return response()->json([
-                'message' => 'Payment was successful',
-            ], 200);
+                'message' => $response->getMessage(),
+            ], 400);
+        } catch (\Exception $exception) {
+            Log::error('Complete Payment Error: ' . $exception->getMessage());
+            return response()->json([
+                'message' => 'An error occurred',
+            ], 500);
         }
-        return response()->json([
-            'message' => $response->getMessage(),
-        ], 400);
     }
 
     private function validateCredentials($publishableKey, $paymentSecret)
@@ -208,5 +224,26 @@ class PaymentsController extends Controller
         }
         return $params;
 
+    }
+
+    private function getPaymentReference($gateway, $data)
+    {
+        $key = config("payment.payment_reference_key.$gateway");
+        return $key && isset($data[$key]) ? $data[$key] : null;
+    }
+
+    private function updatePaymentReference($payment, $paymentReference, $status = 'Pending Confirmation')
+    {
+        if (!$paymentReference) {
+            return response()->json([
+                'message' => 'We couldn\'t acquire a payment reference',
+            ], 500);
+        }
+
+        $payment->update([
+            'status' => $status,
+            'transaction_reference' => $paymentReference
+        ]);
+        return 0;
     }
 }
