@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 class HandlePaymentFailedEvent
 {
     use SignData;
+
     /**
      * Create the event listener.
      *
@@ -31,23 +32,17 @@ class HandlePaymentFailedEvent
      */
     public function handle(PaymentFailed $event)
     {
+        $data = $event->getData();
+        $payment = $data['payment'];
+        $paymentData = json_decode($payment->payment_data, true);
         try {
-            $data = $event->getData();
-            $payment = $data['payment'];
             $payment->update([
                 'status' => 'Failed',
                 'payment_gateway' => $data['payment_gateway'],
                 'transaction_reference' => $data['transaction_reference']
             ]);
-            $paymentData = json_decode($payment->payment_data, true);
             $key = $payment->client->key;
             $secretKey = $payment->mode === 'test' ? $key->test_secret_key : $key->live_secret_key;
-            $http = new Client([
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Origin' => config('app.url')
-                ]
-            ]);
             $data = [
                 'event' => 'payment.failed',
                 'payment_secret' => $payment->payment_secret,
@@ -55,12 +50,28 @@ class HandlePaymentFailedEvent
                 'signed_field_names' => 'signed_field_names,event,payment_secret,metadata'
             ];
             $data['signature'] = $this->sign($data, $secretKey);
+
+        } catch (\Exception $exception) {
+            Log::error('Payment Failed Handler Error: ' . $exception->getMessage());
+        }
+        try {
+            $http = new Client([
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Origin' => config('app.url')
+                ]
+            ]);
             $response = $http->post($paymentData['return_url'], [
                 'form_params' => $data
             ]);
-            // todo save the response code
+            $payment->update([
+                'webhook_response_code' => $response->getStatusCode(),
+            ]);
         } catch (\Exception $exception) {
             Log::error('Payment Failed Webhook Error: ' . $exception->getMessage());
+            $payment->update([
+                'webhook_response_code' => $exception->getCode(),
+            ]);
         }
     }
 }

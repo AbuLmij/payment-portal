@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 class Payment extends Model
 {
     use HasFactory;
-    protected $fillable = ['client_id', 'status', 'mode', 'payment_gateway', 'transaction_reference', 'payment_secret',
-        'payment_data', 'payment_meta_data'];
+    protected $fillable = ['client_id', 'status', 'mode', 'payment_gateway', 'transaction_reference',
+        'webhook_response_code', 'payment_secret', 'payment_data', 'payment_meta_data'];
 
     public function client()
     {

@@ -205,15 +205,16 @@ __webpack_require__.r(__webpack_exports__);
           payment_secret: this.paymentSecret
         }
       }).then(function (response) {
-        this.paymentAmount = response.data.data.amount;
-        this.paymentCurrency = response.data.data.currency;
-        this.showPaymentForm();
-      }.bind(this))["catch"](function (error) {
-        this.$vs.notify({
+        _this2.paymentAmount = response.data.data.amount;
+        _this2.paymentCurrency = response.data.data.currency;
+
+        _this2.showPaymentForm();
+      })["catch"](function (error) {
+        _this2.$vs.notify({
           color: "danger",
           text: error.message
         });
-      }.bind(this))["finally"](function () {
+      })["finally"](function () {
         _this2.$vs.loading.close();
       });
     },
@@ -244,20 +245,23 @@ __webpack_require__.r(__webpack_exports__);
       }.bind(this), 300);
     },
     submitStripeForm: function submitStripeForm() {
+      var _this3 = this;
+
       this.$vs.loading();
       this.stripe.obj.createToken(this.stripe.card).then(function (result) {
         if (result.error) {
-          this.$vs.loading.close(); // Inform the customer that there was an error.
+          _this3.$vs.loading.close(); // Inform the customer that there was an error.
+
 
           var errorElement = document.getElementById('stripe-card-errors');
           errorElement.textContent = result.error.message;
         } else {
           // Send the token to your server.
-          this.confirmPayment({
+          _this3.confirmPayment({
             token: result.token.id
           });
         }
-      }.bind(this));
+      });
     },
     confirmPayment: function confirmPayment(params) {
       Object.assign(params, {
@@ -278,8 +282,9 @@ __webpack_require__.r(__webpack_exports__);
           }
         } catch (err) {}
 
+        window.close();
         return false;
-      }.bind(this))["catch"](function (error) {
+      })["catch"](function (error) {
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage({
@@ -289,14 +294,13 @@ __webpack_require__.r(__webpack_exports__);
           }
         } catch (err) {}
 
-        return false;
-      }.bind(this))["finally"](function () {
         window.close();
+        return false;
       });
     }
   },
   mounted: function mounted() {
-    var _this3 = this;
+    var _this4 = this;
 
     this.publishableKey = this.$route.query.pk;
     this.paymentSecret = this.$route.query.ps;
@@ -311,7 +315,7 @@ __webpack_require__.r(__webpack_exports__);
 
     this.stripe.obj = Stripe(stripeKey);
     this.validateCredentials().then(function () {
-      _this3.getPaymentInfo();
+      _this4.getPaymentInfo();
     });
   }
 });

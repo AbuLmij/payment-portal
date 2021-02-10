@@ -110,18 +110,16 @@ class PaymentsController extends Controller
             'currency' => $paymentData['currency'],
             'amount' => $paymentData['amount'],
             'confirm' => true,
-            'returnUrl' => url('complete_payment', [
-                'payment_gateway' => $paymentGateway,
-                'mode' => $mode,
-            ])
+            'returnUrl' => 'http://payment-portal.net:88/complete_payment?payment_gateway=' . $paymentGateway
+                . '&mode=' . $mode
         ]);
         try {
             $response = $gateway->purchase($params)->send();
-            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
-
+            Log::info($response->getData());
             // redirect to offsite payment gateway
             if ($response->isRedirect()) {
-                if ($res = $this->updatePaymentReference($payment, $paymentReference)) {
+                $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
+                if ($res = $this->updatePaymentReference($payment, $paymentGateway, $paymentReference)) {
                     return $res;
                 }
                 return response()->json([
@@ -130,12 +128,14 @@ class PaymentsController extends Controller
             }
             // payment was successful: update database
             if ($response->isSuccessful()) {
+                $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
                 PaymentSucceeded::dispatch($payment, $paymentGateway, $paymentReference);
                 return response()->json([
                     'message' => 'Payment was successful',
                 ], 200);
             }
             // payment failed: display message to customer
+            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData(), 'failed');
             PaymentFailed::dispatch($payment, $paymentGateway, $paymentReference);
             return response()->json([
                 'message' => $response->getMessage(),
@@ -164,7 +164,8 @@ class PaymentsController extends Controller
 
         try {
             $response = $gateway->completePurchase($params)->send();
-            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData());
+            $case = $response->isSuccessful() ? 'default' : 'failed';
+            $paymentReference = $this->getPaymentReference($paymentGateway, $response->getData(), $case);
             $payment = Payment::where('status', 'Pending Confirmation')
                 ->where('transaction_reference', $paymentReference)
                 ->first();
@@ -179,6 +180,8 @@ class PaymentsController extends Controller
                     'message' => 'Payment was successful',
                 ], 200);
             }
+            Log::info('aaaa');
+            PaymentFailed::dispatch($payment, $paymentGateway, $paymentReference);
             return response()->json([
                 'message' => $response->getMessage(),
             ], 400);
@@ -226,13 +229,24 @@ class PaymentsController extends Controller
 
     }
 
-    private function getPaymentReference($gateway, $data)
+    private function getPaymentReference($gateway, $data, $case = 'default')
     {
-        $key = config("payment.payment_reference_key.$gateway");
-        return $key && isset($data[$key]) ? $data[$key] : null;
+        $key = config("payment.payment_reference_key.$gateway.$case");
+        if (!$key) {
+            return null;
+        }
+        $keys = explode('.', $key);
+        $value = $data;
+        foreach ($keys as $k) {
+            if (!$value) {
+                return null;
+            }
+            $value = $value[$k] ?? null;
+        }
+        return $value;
     }
 
-    private function updatePaymentReference($payment, $paymentReference, $status = 'Pending Confirmation')
+    private function updatePaymentReference($payment, $gateway, $paymentReference, $status = 'Pending Confirmation')
     {
         if (!$paymentReference) {
             return response()->json([
@@ -242,6 +256,7 @@ class PaymentsController extends Controller
 
         $payment->update([
             'status' => $status,
+            'payment_gateway' => $gateway,
             'transaction_reference' => $paymentReference
         ]);
         return 0;

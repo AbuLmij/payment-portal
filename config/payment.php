@@ -10,7 +10,10 @@ return [
         ]
     ],
     'payment_reference_key' => [
-        'stripe' => 'id'
+        'stripe' => [
+            'default' => 'id',
+            'failed' => 'error.payment_intent.id'
+        ]
     ],
     'params' => [
         'stripe' => [

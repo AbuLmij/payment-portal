@@ -170,17 +170,17 @@
                         payment_secret: this.paymentSecret
                     }
                 })
-                    .then(function (response) {
+                    .then((response) => {
                         this.paymentAmount = response.data.data.amount;
                         this.paymentCurrency = response.data.data.currency;
                         this.showPaymentForm();
-                    }.bind(this))
-                    .catch(function (error) {
+                    })
+                    .catch((error) => {
                         this.$vs.notify({
                             color: "danger",
                             text: error.message,
                         });
-                    }.bind(this))
+                    })
                     .finally(() => {
                         this.$vs.loading.close();
                     });
@@ -214,7 +214,7 @@
             },
             submitStripeForm() {
                 this.$vs.loading();
-                this.stripe.obj.createToken(this.stripe.card).then(function (result) {
+                this.stripe.obj.createToken(this.stripe.card).then((result) => {
                     if (result.error) {
                         this.$vs.loading.close();
                         // Inform the customer that there was an error.
@@ -226,7 +226,7 @@
                             token: result.token.id
                         });
                     }
-                }.bind(this));
+                });
             },
             confirmPayment(params) {
                 Object.assign(params, {
@@ -234,7 +234,7 @@
                     payment_secret: this.paymentSecret,
                     payment_gateway: this.paymentGateway
                 });
-                this.$http.post('/confirm_payment', params).then(function (result) {
+                this.$http.post('/confirm_payment', params).then((result) => {
                     if (result.status === 202) {
                         window.location.href = result.data.url;
                         return false;
@@ -246,9 +246,10 @@
                         }
                     } catch (err) {
                     }
+                    window.close();
                     return false;
-                }.bind(this))
-                    .catch(function (error) {
+                })
+                    .catch((error) => {
                         try {
                             if (window.opener && !window.opener.closed) {
                                 window.opener.postMessage({
@@ -258,10 +259,8 @@
                             }
                         } catch (err) {
                         }
-                        return false;
-                    }.bind(this))
-                    .finally(() => {
                         window.close();
+                        return false;
                     });
             }
         },
