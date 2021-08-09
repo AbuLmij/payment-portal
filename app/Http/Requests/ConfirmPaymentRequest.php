@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class PaymentIntentRequest extends FormRequest
+class ConfirmPaymentRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,11 +23,12 @@ class PaymentIntentRequest extends FormRequest
      */
     public function rules()
     {
-        return [
-            'currency' => 'required|string|in:' . implode(',', config('payment.supported_currencies')),
-            'amount' => 'required|numeric|min:0.01|regex:/^\d+(\.\d{1,2})?$/',
-            'metadata' => 'nullable|array',
-            'return_url' => 'required|url'
-        ];
+//        dd($this->all());
+        return array_merge([
+            'payment_gateway' => 'bail|required|string|in:' .
+                implode(',', array_keys(config('payment.payment_gateways', []))),
+
+        ],
+            config('payment.params.' . $this->input('payment_gateway', ''), []));
     }
 }

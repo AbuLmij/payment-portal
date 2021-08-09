@@ -386,6 +386,11 @@ const router = new Router({
                component: () => import('@/views/pay/Pay.vue')
             },
             {
+               path: '/complete_payment',
+               name: 'Authentication Succeeded',
+               component: () => import('@/views/pay/CompletePayment.vue')
+            },
+            {
                path: '/login',
                name: 'Login',
                component: () => import('@/views/login/Login.vue')
